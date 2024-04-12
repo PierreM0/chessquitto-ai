@@ -5,6 +5,12 @@ from typing import List, Tuple
 board = [[None for j in range(4)] for i in range(4)]
 
 
+REINE_TOUR_FOU_CAVALIER = 1
+TOUR_FOU_CAVALIER_PION  = 2
+TOUR_FOU_CAVALIER_ROI   = 3
+
+VARIANTE = REINE_TOUR_FOU_CAVALIER
+
 class PionDeBase:
     def __init__(self, ligne: int, colonne: int, joueur: int, value: int, nom: str) -> None:
         self.ligne = ligne
@@ -43,14 +49,26 @@ class Joueur:
 
 class Board:
     def __init__(self, joueur1: Joueur, joueur2: Joueur):
+        global VARIANTE
         self.nligne = 4
         self.ncol = 4
         self.tab = newBoard()
         self.joueur1 = joueur1
         self.joueur2 = joueur2
         self.deplacementsSansPrises = 0
-        self.piecesJoueur1APlacer = [Reine(-1, -1, 1), Tour(-1, -1, 1), Cavalier(-1, -1, 1), Fou(-1, -1, 1)]
-        self.piecesJoueur2APlacer = [Reine(-1, -1, 2), Tour(-1, -1, 2), Cavalier(-1, -1, 2), Fou(-1, -1, 2)]
+        if VARIANTE == REINE_TOUR_FOU_CAVALIER:
+            self.piecesJoueur1APlacer = [Reine(-1, -1, 1), Tour(-1, -1, 1), Cavalier(-1, -1, 1), Fou(-1, -1, 1)]
+            self.piecesJoueur2APlacer = [Reine(-1, -1, 2), Tour(-1, -1, 2), Cavalier(-1, -1, 2), Fou(-1, -1, 2)]
+        elif VARIANTE == TOUR_FOU_CAVALIER_ROI:
+            self.piecesJoueur1APlacer = [Roi(-1, -1, 1), Tour(-1, -1, 1), Cavalier(-1, -1, 1), Fou(-1, -1, 1)]
+            self.piecesJoueur2APlacer = [Roi(-1, -1, 2), Tour(-1, -1, 2), Cavalier(-1, -1, 2), Fou(-1, -1, 2)]
+        elif VARIANTE == TOUR_FOU_CAVALIER_PION:
+            self.piecesJoueur1APlacer = [Pion(-1, -1, 1), Tour(-1, -1, 1), Cavalier(-1, -1, 1), Fou(-1, -1, 1)]
+            self.piecesJoueur2APlacer = [Pion(-1, -1, 2), Tour(-1, -1, 2), Cavalier(-1, -1, 2), Fou(-1, -1, 2)]
+        else:
+            print("Erreur de variante. Elle n'existe pas")
+            exit(1)
+
         self.phase = 1
 
     def get(self, pos: Tuple[int, int]) -> PionDeBase:
@@ -90,6 +108,58 @@ class Board:
                     chaine += " " + self.get((i, j)).nom + str(self.get((i, j)).joueur) + " "
             chaine += "\n"
         return chaine
+
+
+class Pion(PionDeBase):
+    def __init__(self, ligne: int, colonne: int, joueur: int) -> None:
+        super().__init__(ligne, colonne, joueur, 1, "P")
+
+    def get_moves(self, board: Board):
+        coups_possible: List[Tuple[int, int]] = []
+        if (board.get((self.ligne +1, self.colonne))) is None:
+            coups_possible.append((self.ligne+1, self.colonne))
+        if (board.get((self.ligne-1, self.colonne))) is None:
+            coups_possible.append((self.ligne-1, self.colonne))
+        if ((board.get((self.ligne-1, self.colonne-1))) is not None and
+                board.get((self.ligne-1, self.colonne-1)).joueur != self.joueur):
+            coups_possible.append((self.ligne-1, self.colonne-1))
+        if ((board.get((self.ligne-1, self.colonne+1))) is not None and
+                (board.get((self.ligne-1, self.colonne+1)).joueur != self.joueur)):
+            coups_possible.append((self.ligne-1, self.colonne+1))
+        if ((board.get((self.ligne+1, self.colonne-1))) is not None and
+                board.get((self.ligne+1, self.colonne-1)).joueur != self.joueur):
+            coups_possible.append((self.ligne+1, self.colonne-1))
+        if ((board.get((self.ligne+1, self.colonne+1))) is not None and
+                (board.get((self.ligne+1, self.colonne+1)).joueur != self.joueur)):
+            coups_possible.append((self.ligne+1, self.colonne+1))
+        return coups_possible
+
+def check(board: Board, king: Roi) -> bool:
+    for line in board.tab:
+        for piece in line:
+            if piece is None or piece.joueur == king.joueur:
+                continue
+            else:
+                if (king.ligne, king.colonne) in piece.get_moves():
+                   return True
+    return False
+
+class Roi():
+    def __init__(self, ligne: int, colonne: int, joueur: int):
+        super().__init__(ligne, colonne, joueur, math.inf, "R")
+
+    def get_moves(self, board: Board):
+        # o o o
+        # o R o
+        # o o o
+        coups_possible: List[Tuple[int, int]] = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (1, -1), (0, -1), (-1, -1)]
+        for coup in coups_possible:
+            new_board = jouer(board, f'R{self.joueur}', coup, self.joueur)
+            if check(new_board, self):
+                coups_possible.remove(coup)
+
+        return coups_possible
+
 
 
 class Tour(PionDeBase):
@@ -461,9 +531,20 @@ def jouerPartie():
             print("il faut placer vos pieces : TAPEZ LE NOM DE LA PIECE (Q,T,F,C) parmis les pieces qu'il vous reste à placer")
             for piece in board.piecesJoueur1APlacer:
                 print(piece.nom+" " , end="")
-            lettre = str(input("rentrez une lettre :"))
-            ligne = int(input("rentrez la ligne:"))
-            colonne = int(input("rentrez la colonne:"))
+
+            # when misstyping
+            while True:
+                try:
+                    lettre = str(input("rentrez une lettre :"))
+                    ligne = int(input("rentrez la ligne:"))
+                    colonne = int(input("rentrez la colonne:"))
+                    if (board[ligne][colonne] is not None):
+                        raise ValueError("placement invalide.")
+                    else:
+                        break
+                except Error:
+                    pass
+
             board = placer(board, lettre, (ligne,colonne), 1)
             print(board)
             _,IA_play,lettre_ia = valMax(board,-math.inf,math.inf,4)
@@ -478,9 +559,16 @@ def jouerPartie():
             print("il faut placer vos pieces : TAPEZ LE NOM DE LA PIECE (Q,T,F,C) qu'il vous reste !")
             for piece in board.joueur1.pieces:
                 print(piece.nom+" ", end="")
-            lettre = str(input("rentrez une lettre :"))
-            ligne = int(input("rentrez la ligne:"))
-            colonne = int(input("rentrez la colonne:"))
+
+            # when misstyping
+            while True:
+                try:
+                    lettre = str(input("rentrez une lettre :"))
+                    ligne = int(input("rentrez la ligne:"))
+                    colonne = int(input("rentrez la colonne:"))
+                except Error:
+                    pass
+
             board = jouer(board, lettre, (ligne,colonne), 1)
             print(board)
             _,IA_play,lettre_ia = valMax(board,-math.inf,math.inf,4)
