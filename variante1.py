@@ -9,7 +9,7 @@ REINE_TOUR_FOU_CAVALIER = 1
 TOUR_FOU_CAVALIER_PION  = 2
 TOUR_FOU_CAVALIER_ROI   = 3
 
-VARIANTE = TOUR_FOU_CAVALIER_PION
+VARIANTE = TOUR_FOU_CAVALIER_ROI
 
 class PionDeBase:
     def __init__(self, ligne: int, colonne: int, joueur: int, value: int, nom: str) -> None:
@@ -144,23 +144,26 @@ def check(board: Board, king) -> bool:
             if piece is None or piece.joueur == king.joueur:
                 continue
             else:
-                if (king.ligne, king.colonne) in piece.get_moves():
+                if piece.nom != "R" and (king.ligne, king.colonne) in piece.get_moves(board):
                    return True
+
     return False
 
-class Roi():
+class Roi(PionDeBase):
     def __init__(self, ligne: int, colonne: int, joueur: int):
-        super().__init__(ligne, colonne, joueur, math.inf, "R")
+        super().__init__(ligne, colonne, joueur, 999, "R")
 
     def get_moves(self, board: Board):
         # o o o
         # o R o
         # o o o
-        coups_possible: List[Tuple[int, int]] = [(-1, 1), (0, 1), (1, 1),
+        coups_possible_: List[Tuple[int, int]] = [(-1, 1), (0, 1), (1, 1),
                                                  (-1, 0),          (1, 0),
                                                  (1, -1), (0, -1), (-1, -1)]
-        for coup in coups_possible:
-            coup[0], coup[1] = coup[0] + self.ligne, coup[1] + self.colonne
+        coups_possible: List[Tuple[int,int]] = []
+        for coup in coups_possible_:
+            var = (coup[0] + self.ligne, coup[1] + self.colonne)
+            coups_possible.append(var)
 
         for coup in coups_possible:
             new_board = jouer(board, f'R{self.joueur}', coup, self.joueur)
