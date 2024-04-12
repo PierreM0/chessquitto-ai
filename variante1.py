@@ -167,7 +167,7 @@ class Roi():
             if check(new_board, self):
                 coups_possible.remove(coup)
 
-        cp = sanitize_moves(coups_possible)
+        cp = sanitize_move(coups_possible)
         return cp
 
 
@@ -402,6 +402,18 @@ def gagner(board: Board):
             return -1
         else:
             return 1
+    if VARIANTE==TOUR_FOU_CAVALIER_ROI:
+        for piece in board.joueur1.pieces:
+            if piece.nom == "R":
+                liste = piece.get_moves(board)
+                if len(liste) == 0:
+                    return 1
+        for piece in board.joueur2.pieces:
+            if piece.nom == "R":
+                liste = piece.get_moves(board)
+                if len(liste) == 0:
+                    return -1
+
     return 0
 
 
