@@ -9,7 +9,7 @@ REINE_TOUR_FOU_CAVALIER = 1
 TOUR_FOU_CAVALIER_PION  = 2
 TOUR_FOU_CAVALIER_ROI   = 3
 
-VARIANTE = REINE_TOUR_FOU_CAVALIER
+VARIANTE = TOUR_FOU_CAVALIER_PION
 
 class PionDeBase:
     def __init__(self, ligne: int, colonne: int, joueur: int, value: int, nom: str) -> None:
@@ -74,6 +74,7 @@ class Board:
     def get(self, pos: Tuple[int, int]) -> PionDeBase:
         return self.tab[pos[0]][pos[1]]
 
+
     # ATTENTION QUAND ON EST A LA PHASE UNE IL FAUT UTILISER CA !!!!
 
     def set(self, piece: PionDeBase, pos: (int, int)) -> None:
@@ -103,11 +104,19 @@ class Board:
         for i in range(4):
             for j in range(4):
                 if self.get((i, j)) is None:
-                    chaine += " - "
+                    chaine += " -- "
                 else:
                     chaine += " " + self.get((i, j)).nom + str(self.get((i, j)).joueur) + " "
             chaine += "\n"
         return chaine
+
+
+def sanitize_move(list_of_move):
+    res = []
+    for move in list_of_move:
+        if move[0] > 0 and move[0] < 4 and move[1] > 0 and move[1] < 4:
+            res.append(move)
+    return res
 
 
 class Pion(PionDeBase):
@@ -115,24 +124,19 @@ class Pion(PionDeBase):
         super().__init__(ligne, colonne, joueur, 1, "P")
 
     def get_moves(self, board: Board):
-        coups_possible: List[Tuple[int, int]] = []
-        if (board.get((self.ligne +1, self.colonne))) is None:
-            coups_possible.append((self.ligne+1, self.colonne))
-        if (board.get((self.ligne-1, self.colonne))) is None:
-            coups_possible.append((self.ligne-1, self.colonne))
-        if ((board.get((self.ligne-1, self.colonne-1))) is not None and
-                board.get((self.ligne-1, self.colonne-1)).joueur != self.joueur):
-            coups_possible.append((self.ligne-1, self.colonne-1))
-        if ((board.get((self.ligne-1, self.colonne+1))) is not None and
-                (board.get((self.ligne-1, self.colonne+1)).joueur != self.joueur)):
-            coups_possible.append((self.ligne-1, self.colonne+1))
-        if ((board.get((self.ligne+1, self.colonne-1))) is not None and
-                board.get((self.ligne+1, self.colonne-1)).joueur != self.joueur):
-            coups_possible.append((self.ligne+1, self.colonne-1))
-        if ((board.get((self.ligne+1, self.colonne+1))) is not None and
-                (board.get((self.ligne+1, self.colonne+1)).joueur != self.joueur)):
-            coups_possible.append((self.ligne+1, self.colonne+1))
-        return coups_possible
+        res = []
+        coups_possible_diag: List[Tuple[int, int]] = sanitize_move([(-1 + self.ligne, 1 + self.colonne),   (1 + self.ligne, 1 + self.colonne),
+                                                 (-1 + self.ligne, -1 + self.colonne),  (1 + self.ligne, -1 + self.colonne)])
+        coups_possibles_normaux =  sanitize_move([(0 + self.ligne, 1 + self.colonne),(0 + self.ligne, -1 + self.colonne)])
+
+        for move in coups_possibles_normaux:
+            if board.get(move) is None:
+               res.append(move)
+
+        for move in coups_possible_diag:
+            if board.get(move) is not None and board.get(move).joueur != self.joueur:
+                res.append(move)
+        return res
 
 def check(board: Board, king) -> bool:
     for line in board.tab:
@@ -152,13 +156,19 @@ class Roi():
         # o o o
         # o R o
         # o o o
-        coups_possible: List[Tuple[int, int]] = [(-1, 1), (0, 1), (1, 1), (-1, 0), (1, 0), (1, -1), (0, -1), (-1, -1)]
+        coups_possible: List[Tuple[int, int]] = [(-1, 1), (0, 1), (1, 1),
+                                                 (-1, 0),          (1, 0),
+                                                 (1, -1), (0, -1), (-1, -1)]
+        for coup in coups_possible:
+            coup[0], coup[1] = coup[0] + self.ligne, coup[1] + self.colonne
+
         for coup in coups_possible:
             new_board = jouer(board, f'R{self.joueur}', coup, self.joueur)
             if check(new_board, self):
                 coups_possible.remove(coup)
 
-        return coups_possible
+        cp = sanitize_moves(coups_possible)
+        return cp
 
 
 
@@ -254,9 +264,9 @@ class Fou(PionDeBase):
                 piece = board.get((self.colonne + i, self.ligne + i))
                 if piece is not None:
                     if piece.joueur != self.joueur:
-                        coups_possible.append((self.ligne + 1, self.colonne + 1))
+                        coups_possible.append((self.ligne + i, self.colonne + i))
                     break
-                coups_possible.append((self.ligne + 1, self.colonne + 1))
+                coups_possible.append((self.ligne + i, self.colonne + i))
             else:
                 break
         return coups_possible
@@ -330,9 +340,9 @@ class Reine(PionDeBase):
                 piece = board.get((self.colonne + i, self.ligne + i))
                 if piece is not None:
                     if piece.joueur != self.joueur:
-                        coups_possible.append((self.ligne + 1, self.colonne + 1))
+                        coups_possible.append((self.ligne + i, self.colonne + i))
                     break
-                coups_possible.append((self.ligne + 1, self.colonne + 1))
+                coups_possible.append((self.ligne + i, self.colonne + i))
             else:
                 break
         for i in range(self.ligne + 1, 4):
@@ -402,7 +412,6 @@ def jouer(board: Board, nom: str, pos: Tuple[int, int], njoueur: int):
             if piece.nom == nom:
                 nboard.Move(piece, pos)
     else:
-        print(nom, pos, njoueur)
         for piece in nboard.joueur2.pieces:
             if piece.nom == nom:
                 nboard.Move(piece, pos)
@@ -578,7 +587,7 @@ def jouerPartie():
             if(IA_play == (-1,-1)):
                 print(board)
                 break
-            board = jouer(board,lettre,IA_play,2)
+            board = jouer(board,lettre_ia,IA_play,2)
             print(board)
             print("L'IA a joué : " + lettre_ia + " ligne : " + str(IA_play[0]) + "colonne: " + str(IA_play[1]))
     if(gagner(board) == 1):
