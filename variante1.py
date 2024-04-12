@@ -134,7 +134,7 @@ class Pion(PionDeBase):
             coups_possible.append((self.ligne+1, self.colonne+1))
         return coups_possible
 
-def check(board: Board, king: Roi) -> bool:
+def check(board: Board, king) -> bool:
     for line in board.tab:
         for piece in line:
             if piece is None or piece.joueur == king.joueur:
@@ -402,6 +402,7 @@ def jouer(board: Board, nom: str, pos: Tuple[int, int], njoueur: int):
             if piece.nom == nom:
                 nboard.Move(piece, pos)
     else:
+        print(nom, pos, njoueur)
         for piece in nboard.joueur2.pieces:
             if piece.nom == nom:
                 nboard.Move(piece, pos)
@@ -538,11 +539,11 @@ def jouerPartie():
                     lettre = str(input("rentrez une lettre :"))
                     ligne = int(input("rentrez la ligne:"))
                     colonne = int(input("rentrez la colonne:"))
-                    if (board[ligne][colonne] is not None):
+                    if (board.tab[ligne][colonne] is not None):
                         raise ValueError("placement invalide.")
                     else:
                         break
-                except Error:
+                except:
                     pass
 
             board = placer(board, lettre, (ligne,colonne), 1)
@@ -566,7 +567,9 @@ def jouerPartie():
                     lettre = str(input("rentrez une lettre :"))
                     ligne = int(input("rentrez la ligne:"))
                     colonne = int(input("rentrez la colonne:"))
-                except Error:
+                    break
+                except:
+                    print(f"Erreur")
                     pass
 
             board = jouer(board, lettre, (ligne,colonne), 1)
